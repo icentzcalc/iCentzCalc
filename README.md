@@ -1,70 +1,63 @@
-# Getting Started with Create React App
+# Lottery vs Investment Calculator
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A financial calculator that shows the impact of lottery spending versus investing that money over time.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+This React-based calculator helps users understand the long-term financial consequences of regular lottery ticket purchases. It visualizes:
 
-### `npm start`
+- Total spending on lottery tickets over different time periods
+- Potential investment growth of that same money
+- Alternative purchases the money could buy
+- Social sharing options to spread financial awareness
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Features
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Spending Visualization**: See lottery costs over 1, 5, and 10 years
+- **Investment Growth**: Calculate potential returns at 8% annual rate
+- **Alternatives**: Understand what else you could buy with that money
+- **Social Sharing**: Share results on Twitter and Facebook
 
-### `npm test`
+## Installation
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Start the development server:
+   ```
+   npm start
+   ```
 
-### `npm run build`
+## Usage
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The calculator lets users input:
+- Number of lottery tickets purchased per month
+- Cost per ticket
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+It then calculates and displays:
+- Total spending in different time frames
+- Potential investment returns over 5, 10, 20, 30 and 50 years
+- Alternative purchases like coffees, smartphones, or vacations
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Customization
 
-### `npm run eject`
+You can easily customize:
+- The investment return rate (currently 8%)
+- Alternative purchase items and their costs
+- Social sharing text
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Technology
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- React
+- Lucide icons
+- Inline styling for easy deployment
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Purpose
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+This calculator serves as a tool for financial education, helping people visualize the opportunity cost of small regular purchases and the power of compound interest over time.
 
-## Learn More
+## License
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Learner's permit
