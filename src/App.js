@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import './App.css';
 import SimpleNavbar from './components/SimpleNavbar';
 import LotteryCal from './calculators/LotteryCal';
+import ChorzCalculator from './calculators/ChorzCalculator.jsx'; // Import the new Chorz calculator
 import Home from './components/Home';
 
 function App() {
@@ -34,6 +35,8 @@ function App() {
     switch (currentPage) {
       case 'lottery':
         return <LotteryCal />;
+      case 'chorz': // Add this case for the Chorz calculator
+        return <ChorzCalculator />;
       case 'home':
         return <Home onNavigate={handleNavigate} />;
       default:

@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ChevronDown, PiggyBank, Calculator, BookOpen, Rocket } from 'lucide-react';
+import { 
+  Menu, 
+  X, 
+  ChevronDown, 
+  PiggyBank, 
+  Calculator, 
+  BookOpen, 
+  Rocket,
+  ClipboardList
+} from 'lucide-react';
 
 const SimpleNavbar = ({ onNavigate, currentPage = 'home' }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -140,15 +149,16 @@ const SimpleNavbar = ({ onNavigate, currentPage = 'home' }) => {
     color: '#9333ea'
   };
 
-  // Nav link data structure
+  // Nav link data structure - Updated to include Chorz
   const navLinks = [
     {
       name: 'Calcz',
       icon: <Calculator style={iconStyle} />,
       dropdown: [
-        { name: 'Lottery/Gaming', path: 'lottery', icon: <PiggyBank style={iconStyle} /> }
+        { name: 'Lottery/Gaming', path: 'lottery', icon: <PiggyBank style={iconStyle} /> },
+        { name: 'Chorz', path: 'chorz', icon: <ClipboardList style={iconStyle} /> } // Added new Chorz option
       ],
-      active: currentPage === 'lottery'
+      active: currentPage === 'lottery' || currentPage === 'chorz'
     },
     {
       name: 'Smartz',
@@ -228,7 +238,10 @@ const SimpleNavbar = ({ onNavigate, currentPage = 'home' }) => {
                       <button 
                         key={item.name}
                         onClick={() => handleNavigate(item.path)}
-                        style={dropdownItemStyle}
+                        style={{
+                          ...dropdownItemStyle,
+                          ...(currentPage === item.path ? { backgroundColor: '#f3f0ff', color: '#9333ea' } : {})
+                        }}
                       >
                         {item.icon}
                         {item.name}
@@ -293,7 +306,11 @@ const SimpleNavbar = ({ onNavigate, currentPage = 'home' }) => {
                       <button 
                         key={item.name}
                         onClick={() => handleNavigate(item.path)}
-                        style={{ ...dropdownItemStyle, padding: '0.5rem 1rem' }}
+                        style={{ 
+                          ...dropdownItemStyle, 
+                          padding: '0.5rem 1rem',
+                          ...(currentPage === item.path ? { backgroundColor: '#f3f0ff', color: '#9333ea' } : {})
+                        }}
                       >
                         {item.icon}
                         {item.name}
