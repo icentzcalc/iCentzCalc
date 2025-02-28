@@ -1,16 +1,66 @@
-// src/App.js
-
-import React from 'react';
-// 1) Import your lottery calculator component.
-//    Make sure the filename matches exactly,
-//    e.g., `lotterycal.jsx`.
-import LotteryCal from './lotterycalc.jsx';
+import React, { useState } from 'react';
+import './App.css';
+import SimpleNavbar from './components/SimpleNavbar';
+import LotteryCal from './calculators/LotteryCal';
+import Home from './components/Home';
 
 function App() {
-  // 2) Return your component within the App component.
+  const [currentPage, setCurrentPage] = useState('home');
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionClass, setTransitionClass] = useState('');
+
+  const handleNavigate = (page) => {
+    if (page === currentPage) return;
+    
+    // Start transition out
+    setIsTransitioning(true);
+    setTransitionClass('page-exit');
+    
+    // After exit animation completes, change page and start entry animation
+    setTimeout(() => {
+      setCurrentPage(page);
+      setTransitionClass('page-enter');
+      
+      // After entry animation completes, end transitioning state
+      setTimeout(() => {
+        setIsTransitioning(false);
+        setTransitionClass('');
+      }, 300);
+    }, 300);
+  };
+
+  // Render the appropriate component based on the current page
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'lottery':
+        return <LotteryCal />;
+      case 'home':
+        return <Home onNavigate={handleNavigate} />;
+      default:
+        return <Home onNavigate={handleNavigate} />;
+    }
+  };
+
+  const mainStyle = {
+    opacity: transitionClass === 'page-exit' ? 0 : 1,
+    transition: 'opacity 300ms ease-in-out',
+    animation: transitionClass === 'page-enter' ? 'fadeIn 300ms ease-in-out' : 'none'
+  };
+
   return (
     <div className="App">
-      <LotteryCal />
+      <SimpleNavbar onNavigate={handleNavigate} currentPage={currentPage} />
+      <main style={mainStyle}>
+        {renderPage()}
+      </main>
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}
+      </style>
     </div>
   );
 }
