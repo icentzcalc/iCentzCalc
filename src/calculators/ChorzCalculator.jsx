@@ -264,7 +264,7 @@ const handleCalculate = async () => {
     setChoreResults([
       { 
         title: "Quickest Earning Path", 
-        description: "Reach your goal with fewer chores (highest paying first)",
+        description: "Reach your goal with fewer chores",
         chores: quickestPath.chores,
         totalPay: quickestPath.totalPay,
         totalTime: quickestPath.totalTime,
