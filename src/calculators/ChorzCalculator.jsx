@@ -13,11 +13,14 @@ import {
   Smile,
   Edit,
   RefreshCcw,
-  Calendar
+  Calendar,
+  PlusCircle,
+  X,
+  Save
 } from 'lucide-react';
 
 // API URL 
-const API_URL = '/api'; 
+const API_URL = 'http://localhost:5001/api'; 
 
 // Styled components using inline styles
 const Card = ({ style, children }) => (
@@ -78,6 +81,7 @@ const fallbackChores = [
 ];
 
 const ChorzCalculator = () => {
+  // State variables
   const [choresData, setChoresData] = useState(fallbackChores);
   const [targetAmount, setTargetAmount] = useState('');
   const [targetInput, setTargetInput] = useState('');
@@ -92,6 +96,15 @@ const ChorzCalculator = () => {
   const [filteredChores, setFilteredChores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAddChoreForm, setShowAddChoreForm] = useState(false);
+  const [newChore, setNewChore] = useState({
+    name: '',
+    timeMinutes: 15,
+    payRate: 1,
+    frequency: 'daily'
+  });
+  const [addChoreError, setAddChoreError] = useState('');
+  const [addChoreSuccess, setAddChoreSuccess] = useState('');
 
   // Fetch chores from the API on component mount
   useEffect(() => {
@@ -136,20 +149,18 @@ const ChorzCalculator = () => {
       : `${hours} hr`;
   };
 
-  // Format time period (days and weeks)
+  // Calculate hourly rate
+  const calculateHourlyRate = (pay, minutes) => {
+    if (!minutes || minutes === 0) return 0;
+    const hourlyRate = (pay / minutes) * 60;
+    return hourlyRate;
+  };
+
+  // Format time period (days only)
   const formatTimePeriod = (days, weeks) => {
-    let result = '';
-    
-    if (weeks > 0) {
-      result += `${weeks} week${weeks !== 1 ? 's' : ''}`;
-    }
-    
-    if (days > 0) {
-      if (result) result += ', ';
-      result += `${days} day${days !== 1 ? 's' : ''}`;
-    }
-    
-    return result || 'Less than a day';
+    // Convert to total days instead of showing weeks
+    const totalDays = (weeks * 7) + days;
+    return totalDays > 0 ? `${totalDays} day${totalDays !== 1 ? 's' : ''}` : 'Less than a day';
   };
 
   // Format currency
@@ -213,728 +224,777 @@ const ChorzCalculator = () => {
     setTotalDays(days);
     setTotalWeeks(weeks);
   }, [selectedChores, choresData]);
-
-  // Handle calculate button click
-  const handleCalculate = async () => {
-    if (targetInput && !isNaN(targetInput) && parseFloat(targetInput) > 0) {
-      // Set the target amount from the input
-      const amount = parseFloat(targetInput);
-      setTargetAmount(amount);
+// Handle calculate button click
+const handleCalculate = async () => {
+  if (targetInput && !isNaN(targetInput) && parseFloat(targetInput) > 0) {
+    // Set the target amount from the input
+    const amount = parseFloat(targetInput);
+    setTargetAmount(amount);
+    
+    try {
+      // Try to use the API for calculation
+      const response = await axios.post(`${API_URL}/chores/calculate`, {
+        targetAmount: amount,
+        strategies: ['quickest', 'easiest', 'balanced']
+      });
       
-      try {
-        // Try to use the API for calculation
-        const response = await axios.post(`${API_URL}/chores/calculate`, {
-          targetAmount: amount,
-          strategies: ['quickest', 'easiest', 'balanced']
-        });
-        
-        // If API responds successfully, use the response
-        if (response.data && response.data.results) {
-          setChoreResults(response.data.results);
-          return;
-        }
-      } catch (err) {
-        // If API fails, calculate locally
-        console.error('Error calculating chore plan from API:', err);
-        console.log('Performing local calculation instead');
+      // If API responds successfully, use the response
+      if (response.data && response.data.results) {
+        setChoreResults(response.data.results);
+        return;
       }
-      
-      // Local calculation as fallback
-      // Calculate different chore combinations
-      // Option 1: Quickest path to target (highest paying chores first)
-      const quickestPath = findChoresCombination(amount, 'quickest');
-      
-      // Option 2: Easiest path (shortest duration chores first)
-      const easiestPath = findChoresCombination(amount, 'easiest');
-      
-      // Option 3: Balanced approach (mix of high pay and short duration)
-      const balancedPath = findChoresCombination(amount, 'balanced');
-      
-      // Set the results
-      setChoreResults([
-        { 
-          title: "Quickest Earning Path", 
-          description: "Reach your goal with fewer chores (highest paying first)",
-          chores: quickestPath.chores,
-          totalPay: quickestPath.totalPay,
-          totalTime: quickestPath.totalTime,
-          totalDays: quickestPath.totalDays,
-          totalWeeks: quickestPath.totalWeeks,
-          icon: <Target />
-        },
-        { 
-          title: "Easiest Path", 
-          description: "Easier chores that take less time",
-          chores: easiestPath.chores,
-          totalPay: easiestPath.totalPay,
-          totalTime: easiestPath.totalTime,
-          totalDays: easiestPath.totalDays,
-          totalWeeks: easiestPath.totalWeeks,
-          icon: <Smile />
-        },
-        { 
-          title: "Balanced Approach", 
-          description: "Mix of quick and high-paying chores",
-          chores: balancedPath.chores,
-          totalPay: balancedPath.totalPay,
-          totalTime: balancedPath.totalTime,
-          totalDays: balancedPath.totalDays,
-          totalWeeks: balancedPath.totalWeeks,
-          icon: <Award />
-        }
-      ]);
-    } else {
-      setChoreResults([]);
+    } catch (err) {
+      // If API fails, calculate locally
+      console.error('Error calculating chore plan from API:', err);
+      console.log('Performing local calculation instead');
     }
-  };
+    
+    // Local calculation as fallback
+    // Calculate different chore combinations
+    // Option 1: Quickest path to target (highest paying chores first)
+    const quickestPath = findChoresCombination(amount, 'quickest');
+    
+    // Option 2: Easiest path (shortest duration chores first)
+    const easiestPath = findChoresCombination(amount, 'easiest');
+    
+    // Option 3: Balanced approach (mix of high pay and short duration)
+    const balancedPath = findChoresCombination(amount, 'balanced');
+    
+    // Set the results
+    setChoreResults([
+      { 
+        title: "Quickest Earning Path", 
+        description: "Reach your goal with fewer chores (highest paying first)",
+        chores: quickestPath.chores,
+        totalPay: quickestPath.totalPay,
+        totalTime: quickestPath.totalTime,
+        totalDays: quickestPath.totalDays,
+        totalWeeks: quickestPath.totalWeeks,
+        icon: <Target />
+      },
+      { 
+        title: "Easiest Path", 
+        description: "Easier chores that take less time",
+        chores: easiestPath.chores,
+        totalPay: easiestPath.totalPay,
+        totalTime: easiestPath.totalTime,
+        totalDays: easiestPath.totalDays,
+        totalWeeks: easiestPath.totalWeeks,
+        icon: <Smile />
+      },
+      { 
+        title: "Balanced Approach", 
+        description: "Mix of quick and high-paying chores",
+        chores: balancedPath.chores,
+        totalPay: balancedPath.totalPay,
+        totalTime: balancedPath.totalTime,
+        totalDays: balancedPath.totalDays,
+        totalWeeks: balancedPath.totalWeeks,
+        icon: <Award />
+      }
+    ]);
+  } else {
+    setChoreResults([]);
+  }
+};
 
-  // Find chore combinations based on strategy with frequency limits
-  const findChoresCombination = (target, strategy) => {
-    let allChores = [...choresData];
+// Find chore combinations based on strategy with frequency limits
+const findChoresCombination = (target, strategy) => {
+  let allChores = [...choresData];
+  
+  // Sort based on strategy
+  if (strategy === 'quickest') {
+    // Sort by pay rate (highest first)
+    allChores.sort((a, b) => b.payRate - a.payRate);
+  } else if (strategy === 'easiest') {
+    // Sort by time (shortest first)
+    allChores.sort((a, b) => a.timeMinutes - b.timeMinutes);
+  } else if (strategy === 'balanced') {
+    // Sort by pay rate per minute (most efficient first)
+    allChores.sort((a, b) => (b.payRate / b.timeMinutes) - (a.payRate / a.timeMinutes));
+  }
+  
+  // Separate daily and weekly chores
+  const dailyChores = allChores.filter(chore => chore.frequency === 'daily');
+  const weeklyChores = allChores.filter(chore => chore.frequency === 'weekly');
+  
+  // Find combination with realistic frequency limits
+  const selectedChores = [];
+  let totalPay = 0;
+  let totalTime = 0;
+  
+  // Track chore usage
+  const dailyChoreUsage = {};
+  const weeklyChoreUsage = {};
+  let dailyCycle = 1; // Track cycles through all daily chores
+  let weeklyCycle = 1; // Track cycles through all weekly chores
+  
+  // Keep adding chores until we reach or exceed the target
+  while (totalPay < target) {
+    let addedChore = false;
     
-    // Sort based on strategy
-    if (strategy === 'quickest') {
-      // Sort by pay rate (highest first)
-      allChores.sort((a, b) => b.payRate - a.payRate);
-    } else if (strategy === 'easiest') {
-      // Sort by time (shortest first)
-      allChores.sort((a, b) => a.timeMinutes - b.timeMinutes);
-    } else if (strategy === 'balanced') {
-      // Sort by pay rate per minute (most efficient first)
-      allChores.sort((a, b) => (b.payRate / b.timeMinutes) - (a.payRate / a.timeMinutes));
+    // First try to use weekly chores if we haven't used them all yet in this cycle
+    for (const chore of weeklyChores) {
+      const id = chore.id || chore._id;
+      const currentUsage = weeklyChoreUsage[id] || 0;
+      
+      // Weekly chores can only be done once per week
+      if (currentUsage < weeklyCycle) {
+        // Add this chore
+        selectedChores.push({
+          ...chore,
+          cycle: currentUsage + 1
+        });
+        totalPay += chore.payRate;
+        totalTime += chore.timeMinutes;
+        
+        // Update usage count
+        weeklyChoreUsage[id] = currentUsage + 1;
+        addedChore = true;
+        break;
+      }
     }
     
-    // Separate daily and weekly chores
-    const dailyChores = allChores.filter(chore => chore.frequency === 'daily');
-    const weeklyChores = allChores.filter(chore => chore.frequency === 'weekly');
-    
-    // Find combination with realistic frequency limits
-    const selectedChores = [];
-    let totalPay = 0;
-    let totalTime = 0;
-    
-    // Track chore usage
-    const dailyChoreUsage = {};
-    const weeklyChoreUsage = {};
-    let dailyCycle = 1; // Track cycles through all daily chores
-    let weeklyCycle = 1; // Track cycles through all weekly chores
-    
-    // Keep adding chores until we reach or exceed the target
-    while (totalPay < target) {
-      let addedChore = false;
+    // If we couldn't add a weekly chore, try daily chores
+    if (!addedChore) {
+      let allDailyUsed = true;
       
-      // First try to use weekly chores if we haven't used them all yet in this cycle
-      for (const chore of weeklyChores) {
+      // Check if all daily chores have been used 7 times in this cycle
+      for (const chore of dailyChores) {
         const id = chore.id || chore._id;
-        const currentUsage = weeklyChoreUsage[id] || 0;
+        const currentUsage = dailyChoreUsage[id] || 0;
         
-        // Weekly chores can only be done once per week
-        if (currentUsage < weeklyCycle) {
+        // Daily chores can be done once per day, up to 7 times before needing to use other chores
+        if (currentUsage < dailyCycle * 7) {
+          allDailyUsed = false;
+          
           // Add this chore
           selectedChores.push({
             ...chore,
-            cycle: currentUsage + 1
+            cycle: Math.floor(currentUsage / 7) + 1,
+            dayInCycle: (currentUsage % 7) + 1
           });
           totalPay += chore.payRate;
           totalTime += chore.timeMinutes;
           
           // Update usage count
-          weeklyChoreUsage[id] = currentUsage + 1;
+          dailyChoreUsage[id] = currentUsage + 1;
           addedChore = true;
           break;
         }
       }
       
-      // If we couldn't add a weekly chore, try daily chores
+      // If all daily chores have been used 7 times, start a new cycle
+      if (!addedChore && !allDailyUsed) {
+        continue; // Try again with the same list
+      }
+      
+      // If really all chores (daily and weekly) have been maximally used, start new cycles
       if (!addedChore) {
-        let allDailyUsed = true;
-        
-        // Check if all daily chores have been used 7 times in this cycle
-        for (const chore of dailyChores) {
-          const id = chore.id || chore._id;
-          const currentUsage = dailyChoreUsage[id] || 0;
-          
-          // Daily chores can be done once per day, up to 7 times before needing to use other chores
-          if (currentUsage < dailyCycle * 7) {
-            allDailyUsed = false;
-            
-            // Add this chore
-            selectedChores.push({
-              ...chore,
-              cycle: Math.floor(currentUsage / 7) + 1,
-              dayInCycle: (currentUsage % 7) + 1
-            });
-            totalPay += chore.payRate;
-            totalTime += chore.timeMinutes;
-            
-            // Update usage count
-            dailyChoreUsage[id] = currentUsage + 1;
-            addedChore = true;
-            break;
-          }
+        // First, try to start a new weekly cycle
+        if (Object.keys(weeklyChoreUsage).length === weeklyChores.length) {
+          weeklyCycle++;
+          continue; // Try again with weekly chores
         }
         
-        // If all daily chores have been used 7 times, start a new cycle
-        if (!addedChore && !allDailyUsed) {
-          continue; // Try again with the same list
+        // If we've used all weekly chores too, start a new daily cycle
+        if (Object.keys(dailyChoreUsage).length === dailyChores.length) {
+          dailyCycle++;
+          continue; // Try again with daily chores
         }
         
-        // If really all chores (daily and weekly) have been maximally used, start new cycles
-        if (!addedChore) {
-          // First, try to start a new weekly cycle
-          if (Object.keys(weeklyChoreUsage).length === weeklyChores.length) {
-            weeklyCycle++;
-            continue; // Try again with weekly chores
-          }
-          
-          // If we've used all weekly chores too, start a new daily cycle
-          if (Object.keys(dailyChoreUsage).length === dailyChores.length) {
-            dailyCycle++;
-            continue; // Try again with daily chores
-          }
-          
-          // If we get here, there's an issue with our logic or data
-          console.error('Unable to add more chores - check frequency limits');
-          break;
-        }
+        // If we get here, there's an issue with our logic or data
+        console.error('Unable to add more chores - check frequency limits');
+        break;
       }
     }
-    
-    // Calculate time period
-    // Find the maximum number of times any daily chore was used
-    let maxDailyUsage = 0;
-    Object.values(dailyChoreUsage).forEach(count => {
-      maxDailyUsage = Math.max(maxDailyUsage, count);
+  }
+  
+  // Calculate time period
+  // Find the maximum number of times any daily chore was used
+  let maxDailyUsage = 0;
+  Object.values(dailyChoreUsage).forEach(count => {
+    maxDailyUsage = Math.max(maxDailyUsage, count);
+  });
+  
+  // Find the maximum number of times any weekly chore was used
+  let maxWeeklyUsage = 0;
+  Object.values(weeklyChoreUsage).forEach(count => {
+    maxWeeklyUsage = Math.max(maxWeeklyUsage, count);
+  });
+  
+  // Calculate total days and weeks
+  const totalDays = maxDailyUsage;
+  const totalWeeks = Math.max(Math.ceil(totalDays / 7), maxWeeklyUsage);
+  
+  // Group chores by type and count for a more compact display
+  const choreCount = {};
+  selectedChores.forEach(chore => {
+    const id = chore.id || chore._id;
+    if (!choreCount[id]) {
+      choreCount[id] = {
+        ...chore,
+        count: 1
+      };
+    } else {
+      choreCount[id].count++;
+    }
+  });
+  
+  // Convert back to array
+  const compactChores = Object.values(choreCount).map(chore => ({
+    ...chore,
+    totalPayRate: chore.payRate * chore.count,
+    totalTimeMinutes: chore.timeMinutes * chore.count
+  }));
+  
+  return {
+    chores: compactChores,
+    totalPay,
+    totalTime,
+    totalDays,
+    totalWeeks
+  };
+};
+
+// Toggle chore selection
+const toggleChoreSelection = (chore) => {
+  // Since we now support multiple instances of the same chore,
+  // we'll add a unique identifier for each chore instance
+  const choreCopy = { ...chore, instanceId: Date.now() };
+  setSelectedChores([...selectedChores, choreCopy]);
+};
+
+// Clear selections
+const clearSelections = () => {
+  setSelectedChores([]);
+};
+
+// Adopt a suggested plan
+const adoptPlan = (plan) => {
+  // Convert the plan's compact chores format to individual chore instances
+  let expandedChores = [];
+  plan.chores.forEach(chore => {
+    for (let i = 0; i < chore.count; i++) {
+      expandedChores.push({
+        ...chore,
+        instanceId: Date.now() + i // Ensure unique IDs
+      });
+    }
+  });
+  setSelectedChores(expandedChores);
+};
+
+// Function to handle opening/closing the add chore form
+const toggleAddChoreForm = () => {
+  setShowAddChoreForm(!showAddChoreForm);
+  // Reset form state when opening
+  if (!showAddChoreForm) {
+    setNewChore({
+      name: '',
+      timeMinutes: 15,
+      payRate: 1,
+      frequency: 'daily'
     });
+    setAddChoreError('');
+    setAddChoreSuccess('');
+  }
+};
+
+// Function to handle changes to the form inputs
+const handleChoreInputChange = (e) => {
+  const { name, value } = e.target;
+  
+  if (name === 'timeMinutes') {
+    // Ensure time is in 5 minute increments and within range
+    const numValue = parseInt(value);
+    if (!isNaN(numValue)) {
+      const roundedValue = Math.min(Math.max(Math.round(numValue / 5) * 5, 5), 120);
+      setNewChore({ ...newChore, [name]: roundedValue });
+    }
+  } else if (name === 'payRate') {
+    // Ensure pay is within range
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      const limitedValue = Math.min(Math.max(numValue, 0), 100);
+      setNewChore({ ...newChore, [name]: limitedValue });
+    }
+  } else {
+    // For other fields (name, frequency)
+    setNewChore({ ...newChore, [name]: value });
+  }
+};
+
+// Function to handle form submission
+const handleAddChore = async (e) => {
+  e.preventDefault();
+  
+  // Validate inputs
+  if (!newChore.name.trim()) {
+    setAddChoreError('Please enter a chore name');
+    return;
+  }
+  
+  try {
+    setAddChoreError('');
+    setAddChoreSuccess('');
     
-    // Find the maximum number of times any weekly chore was used
-    let maxWeeklyUsage = 0;
-    Object.values(weeklyChoreUsage).forEach(count => {
-      maxWeeklyUsage = Math.max(maxWeeklyUsage, count);
-    });
+    // Make API call to add the chore
+    const response = await axios.post(`${API_URL}/chores`, newChore);
     
-    // Calculate total days and weeks
-    const totalDays = maxDailyUsage;
-    const totalWeeks = Math.max(Math.ceil(totalDays / 7), maxWeeklyUsage);
+    if (response.data) {
+      // Add the new chore to the state
+      const addedChore = response.data;
+      setChoresData([...choresData, addedChore]);
+      setFilteredChores([...filteredChores, addedChore]);
+      
+      // Show success message
+      setAddChoreSuccess(`${addedChore.name} added successfully!`);
+      
+      // Reset form after successful submission
+      setNewChore({
+        name: '',
+        timeMinutes: 15,
+        payRate: 1,
+        frequency: 'daily'
+      });
+      
+      // Close form after a delay
+      setTimeout(() => {
+        toggleAddChoreForm();
+      }, 2000);
+    }
+  } catch (err) {
+    console.error('Error adding chore:', err);
+    setAddChoreError('Failed to add chore. Please try again.');
     
-    // Group chores by type and count for a more compact display
-    const choreCount = {};
-    selectedChores.forEach(chore => {
-      const id = chore.id || chore._id;
-      if (!choreCount[id]) {
-        choreCount[id] = {
-          ...chore,
-          count: 1
-        };
-      } else {
-        choreCount[id].count++;
-      }
-    });
-    
-    // Convert back to array
-    const compactChores = Object.values(choreCount).map(chore => ({
-      ...chore,
-      totalPayRate: chore.payRate * chore.count,
-      totalTimeMinutes: chore.timeMinutes * chore.count
-    }));
-    
-    return {
-      chores: compactChores,
-      totalPay,
-      totalTime,
-      totalDays,
-      totalWeeks
-    };
-  };
+    // If the API fails, we can still add to local state as a fallback
+    if (newChore.name) {
+      const fallbackChore = {
+        ...newChore,
+        id: `local-${Date.now()}`, // Generate a temporary local ID
+        createdAt: new Date()
+      };
+      
+      setChoresData([...choresData, fallbackChore]);
+      setFilteredChores([...filteredChores, fallbackChore]);
+      setAddChoreSuccess(`${fallbackChore.name} added locally!`);
+      
+      // Reset form after successful local addition
+      setNewChore({
+        name: '',
+        timeMinutes: 15,
+        payRate: 1,
+        frequency: 'daily'
+      });
+      
+      // Close form after a delay
+      setTimeout(() => {
+        toggleAddChoreForm();
+      }, 2000);
+    }
+  }
+};
 
-  // Toggle chore selection
-  const toggleChoreSelection = (chore) => {
-    // Since we now support multiple instances of the same chore,
-    // we'll add a unique identifier for each chore instance
-    const choreCopy = { ...chore, instanceId: Date.now() };
-    setSelectedChores([...selectedChores, choreCopy]);
-  };
+// Common styles
+const containerStyle = {
+  maxWidth: '64rem',
+  margin: '0 auto',
+  padding: '1.5rem'
+};
 
-  // Clear selections
-  const clearSelections = () => {
-    setSelectedChores([]);
-  };
+const titleStyle = {
+  fontSize: '1.875rem',
+  fontWeight: 'bold',
+  color: '#581c87',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.75rem'
+};
 
-  // Adopt a suggested plan
-  const adoptPlan = (plan) => {
-    // Convert the plan's compact chores format to individual chore instances
-    let expandedChores = [];
-    plan.chores.forEach(chore => {
-      for (let i = 0; i < chore.count; i++) {
-        expandedChores.push({
-          ...chore,
-          instanceId: Date.now() + i // Ensure unique IDs
-        });
-      }
-    });
-    setSelectedChores(expandedChores);
-  };
+const iconStyle = {
+  height: '2rem', 
+  width: '2rem', 
+  color: '#9333ea'
+};
 
-  // Common styles (matching your existing component styles)
-  const containerStyle = {
-    maxWidth: '64rem',
-    margin: '0 auto',
-    padding: '1.5rem'
-  };
+const twoColumnGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: '1.5rem',
+  marginBottom: '2rem'
+};
 
-  const titleStyle = {
-    fontSize: '1.875rem',
-    fontWeight: 'bold',
-    color: '#581c87',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.75rem'
-  };
+const cardStyle = {
+  backgroundColor: 'white',
+  padding: '1.5rem',
+  borderRadius: '0.75rem',
+  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+};
 
-  const iconStyle = {
-    height: '2rem', 
-    width: '2rem', 
-    color: '#9333ea'
-  };
+const headingStyle = {
+  fontSize: '1.125rem',
+  fontWeight: '600',
+  color: '#1f2937',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  marginBottom: '1rem'
+};
 
-  const twoColumnGridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '1.5rem',
-    marginBottom: '2rem'
-  };
+const subheadingStyle = {
+  fontSize: '1rem',
+  fontWeight: '500',
+  color: '#4b5563',
+  marginTop: '1.25rem',
+  marginBottom: '0.75rem'
+};
 
-  const cardStyle = {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '0.75rem',
-    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-  };
+const smallIconStyle = {
+  height: '1.25rem', 
+  width: '1.25rem', 
+  color: '#9333ea'
+};
 
-  const headingStyle = {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    marginBottom: '1rem'
-  };
+const labelStyle = {
+  display: 'block',
+  fontSize: '0.875rem',
+  fontWeight: '500',
+  color: '#374151',
+  marginBottom: '0.25rem'
+};
 
-  const subheadingStyle = {
-    fontSize: '1rem',
-    fontWeight: '500',
-    color: '#4b5563',
-    marginTop: '1.25rem',
-    marginBottom: '0.75rem'
-  };
+const inputContainerStyle = {
+  position: 'relative',
+  marginBottom: '1rem'
+};
 
-  const smallIconStyle = {
-    height: '1.25rem', 
-    width: '1.25rem', 
-    color: '#9333ea'
-  };
+const inputStyle = {
+  width: '100%',
+  height: '42px',
+  padding: '0.75rem',
+  paddingLeft: '2.5rem',
+  border: '1px solid #ddd6fe',
+  borderRadius: '0.5rem',
+  outline: 'none',
+  boxSizing: 'border-box',
+  fontSize: '1rem'
+};
 
-  const labelStyle = {
-    display: 'block',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: '0.25rem'
-  };
+const inputIconStyle = {
+  position: 'absolute',
+  left: '0.75rem',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  height: '1.25rem',
+  width: '1.25rem',
+  color: '#a78bfa',
+  pointerEvents: 'none'
+};
 
-  const inputContainerStyle = {
-    position: 'relative',
-    marginBottom: '1rem'
-  };
+const buttonStyle = {
+  width: '100%',
+  backgroundColor: '#9333ea',
+  color: 'white',
+  padding: '0.75rem',
+  borderRadius: '0.5rem',
+  border: 'none',
+  fontWeight: '500',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.5rem'
+};
+const secondaryButtonStyle = {
+  ...buttonStyle,
+  backgroundColor: '#6b7280',
+  marginTop: '0.5rem'
+};
 
-  const inputStyle = {
-    width: '100%',
-    height: '42px',
-    padding: '0.75rem',
-    paddingLeft: '2.5rem',
-    border: '1px solid #ddd6fe',
-    borderRadius: '0.5rem',
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontSize: '1rem'
-  };
+const adoptButtonStyle = {
+  ...buttonStyle,
+  backgroundColor: '#3b82f6',
+  padding: '0.5rem',
+  fontSize: '0.875rem'
+};
 
-  const inputIconStyle = {
-    position: 'absolute',
-    left: '0.75rem',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    height: '1.25rem',
-    width: '1.25rem',
-    color: '#a78bfa',
-    pointerEvents: 'none'
-  };
+const planCardStyle = {
+  backgroundColor: '#f3f0ff',
+  padding: '1rem',
+  borderRadius: '0.5rem',
+  marginBottom: '1rem',
+  border: '1px solid #ddd6fe'
+};
 
-  const buttonStyle = {
-    width: '100%',
-    backgroundColor: '#9333ea',
-    color: 'white',
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
-    border: 'none',
-    fontWeight: '500',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.5rem'
-  };
+const choreItemStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '0.4rem',
+  borderBottom: '1px solid #e5e7eb',
+  cursor: 'pointer',
+  fontSize: '0.875rem'
+};
 
-  const secondaryButtonStyle = {
-    ...buttonStyle,
-    backgroundColor: '#6b7280',
-    marginTop: '0.5rem'
-  };
+const selectedChoreStyle = {
+  ...choreItemStyle,
+  backgroundColor: '#f3f0ff'
+};
 
-  const adoptButtonStyle = {
-    ...buttonStyle,
-    backgroundColor: '#3b82f6',
-    padding: '0.5rem',
-    fontSize: '0.875rem'
-  };
+const choreTitleStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem'
+};
 
-  const planCardStyle = {
-    backgroundColor: '#f3f0ff',
-    padding: '1rem',
-    borderRadius: '0.5rem',
-    marginBottom: '1rem',
-    border: '1px solid #ddd6fe'
-  };
+const choreDetailStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  color: '#6b7280',
+  fontSize: '0.75rem'
+};
 
-  const choreItemStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0.4rem',
-    borderBottom: '1px solid #e5e7eb',
-    cursor: 'pointer',
-    fontSize: '0.875rem'
-  };
+const choreValueStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.25rem'
+};
 
-  const selectedChoreStyle = {
-    ...choreItemStyle,
-    backgroundColor: '#f3f0ff'
-  };
+const resultSectionStyle = {
+  border: '1px solid #ddd6fe',
+  borderRadius: '0.5rem',
+  marginBottom: '1.5rem'
+};
 
-  const choreTitleStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  };
+const resultHeaderStyle = {
+  backgroundColor: '#f3f0ff',
+  padding: '1rem',
+  borderTopLeftRadius: '0.5rem',
+  borderTopRightRadius: '0.5rem',
+  borderBottom: '1px solid #ddd6fe',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem'
+};
 
-  const choreDetailStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    color: '#6b7280',
-    fontSize: '0.75rem'
-  };
+const resultContentStyle = {
+  padding: '1rem',
+  backgroundColor: 'white'
+};
 
-  const choreValueStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.25rem'
-  };
+const summaryStyle = {
+  backgroundColor: '#f3f0ff',
+  padding: '1rem',
+  borderRadius: '0.5rem',
+  marginBottom: '1rem',
+  display: 'flex',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: '1rem'
+};
 
-  const resultSectionStyle = {
-    border: '1px solid #ddd6fe',
-    borderRadius: '0.5rem',
-    marginBottom: '1.5rem'
-  };
+const summaryItemStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center'
+};
 
-  const resultHeaderStyle = {
-    backgroundColor: '#f3f0ff',
-    padding: '1rem',
-    borderTopLeftRadius: '0.5rem',
-    borderTopRightRadius: '0.5rem',
-    borderBottom: '1px solid #ddd6fe',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  };
+const summaryLabelStyle = {
+  fontSize: '0.875rem',
+  color: '#6b7280'
+};
 
-  const resultContentStyle = {
-    padding: '1rem',
-    backgroundColor: 'white'
-  };
+const summaryValueStyle = {
+  fontSize: '1.25rem',
+  fontWeight: 'bold',
+  color: '#581c87'
+};
 
-  const summaryStyle = {
-    backgroundColor: '#f3f0ff',
-    padding: '1rem',
-    borderRadius: '0.5rem',
-    marginBottom: '1rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: '1rem'
-  };
+const dividerStyle = {
+  margin: '1.25rem 0',
+  borderBottom: '1px solid #e5e7eb'
+};
 
-  const summaryItemStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center'
-  };
+const searchInputStyle = {
+  ...inputStyle,
+  marginBottom: '1rem'
+};
 
-  const summaryLabelStyle = {
-    fontSize: '0.875rem',
-    color: '#6b7280'
-  };
+const toggleButtonStyle = {
+  background: 'none',
+  border: 'none',
+  color: '#6b7280',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  textDecoration: 'underline',
+  padding: '0.5rem 0'
+};
 
-  const summaryValueStyle = {
-    fontSize: '1.25rem',
-    fontWeight: 'bold',
-    color: '#581c87'
-  };
+const errorNoticeStyle = {
+  backgroundColor: '#fee2e2',
+  color: '#b91c1c',
+  padding: '0.75rem',
+  borderRadius: '0.5rem',
+  marginBottom: '1rem',
+  fontSize: '0.875rem',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem'
+};
 
-  const dividerStyle = {
-    margin: '1.25rem 0',
-    borderBottom: '1px solid #e5e7eb'
-  };
+return (
+  <div style={containerStyle}>
+    <Card>
+      <CardHeader style={{ textAlign: 'center', paddingBottom: '0.5rem' }}>
+        <CardTitle style={titleStyle}>
+          <ClipboardList style={iconStyle} />
+          Chorz Calculator
+        </CardTitle>
+        <p style={{ color: '#4b5563', marginTop: '0.5rem' }}>
+          Find the chores you need to do to earn what you want
+        </p>
+      </CardHeader>
 
-  const searchInputStyle = {
-    ...inputStyle,
-    marginBottom: '1rem'
-  };
+      <CardContent>
+        {error && (
+          <div style={errorNoticeStyle}>
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
 
-  const toggleButtonStyle = {
-    background: 'none',
-    border: 'none',
-    color: '#6b7280',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    textDecoration: 'underline',
-    padding: '0.5rem 0'
-  };
-
-  const errorNoticeStyle = {
-    backgroundColor: '#fee2e2',
-    color: '#b91c1c',
-    padding: '0.75rem',
-    borderRadius: '0.5rem',
-    marginBottom: '1rem',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  };
-
-  return (
-    <div style={containerStyle}>
-      <Card>
-        <CardHeader style={{ textAlign: 'center', paddingBottom: '0.5rem' }}>
-          <CardTitle style={titleStyle}>
-            <ClipboardList style={iconStyle} />
-            Chorz Calculator
-          </CardTitle>
-          <p style={{ color: '#4b5563', marginTop: '0.5rem' }}>
-            Find the chores you need to do to earn what you want
-          </p>
-        </CardHeader>
-
-        <CardContent>
-          {error && (
-            <div style={errorNoticeStyle}>
-              <span>⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              Loading chores data...
-            </div>
-          ) : (
-            <>
-              {/* Input Section */}
-              <div style={twoColumnGridStyle}>
-                <div style={cardStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={headingStyle}>
-                      <Target style={smallIconStyle} />
-                      Set Your Goal
-                    </h3>
-                    
-                    <button
-                      onClick={() => {
-                        setTargetInput('');
-                        setTargetAmount('');
-                        setSelectedChores([]);
-                        setChoreResults([]);
-                      }}
-                      style={{
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        padding: '0.5rem 0.75rem',
-                        borderRadius: '0.375rem',
-                        border: 'none',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <RefreshCcw size={16} />
-                      Reset Calculator
-                    </button>
-                  </div>
-                  
-                  {targetAmount && (
-                    <div style={{
-                      backgroundColor: '#f0fdf4',
-                      border: '1px solid #86efac',
-                      borderRadius: '0.5rem',
-                      padding: '0.75rem',
-                      marginBottom: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <Target size={16} color="#16a34a" />
-                      <span style={{ color: '#16a34a', fontWeight: '500' }}>
-                        Your target goal: {formatCurrency(targetAmount)}
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <div style={inputContainerStyle}>
-                      <label style={labelStyle}>
-                        How much do you need to earn?
-                      </label>
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          type="number"
-                          value={targetInput}
-                          onChange={(e) => setTargetInput(e.target.value)}
-                          style={inputStyle}
-                          placeholder="e.g., 50"
-                          min="1"
-                          step="1"
-                        />
-                        <DollarSign style={inputIconStyle} />
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={handleCalculate}
-                      style={buttonStyle}
-                    >
-                      <Calculator size={16} />
-                      Calculate Chore Plan
-                    </button>
-
-                    <div style={dividerStyle}></div>
-
-                    <h4 style={subheadingStyle}>Currently Selected Chores</h4>
-                    
-                    {selectedChores.length > 0 ? (
-                      <div>
-                        <div style={summaryStyle}>
-                          <div style={summaryItemStyle}>
-                            <div style={summaryLabelStyle}>Total Earnings</div>
-                            <div style={summaryValueStyle}>{formatCurrency(totalEarnings)}</div>
-                          </div>
-                          
-                          <div style={summaryItemStyle}>
-                            <div style={summaryLabelStyle}>Work Time</div>
-                            <div style={summaryValueStyle}>{formatTime(totalTime)}</div>
-                          </div>
-                          
-                          <div style={summaryItemStyle}>
-                            <div style={summaryLabelStyle}>Time Period</div>
-                            <div style={summaryValueStyle}>
-                              {formatTimePeriod(totalDays % 7, Math.floor(totalDays / 7))}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem' }}>
-                          {selectedChores.map((chore) => (
-                            <div 
-                              key={chore.instanceId || chore.id || chore._id} 
-                              style={selectedChoreStyle}
-                              onClick={() => setSelectedChores(selectedChores.filter(c => 
-                                (c.instanceId || c.id || c._id) !== (chore.instanceId || chore.id || chore._id)
-                              ))}
-                            >
-                              <div style={choreTitleStyle}>
-                                <CheckCircle size={16} color="#9333ea" />
-                                <span>{chore.name}</span>
-                              </div>
-                              <div style={choreDetailStyle}>
-                                <div style={choreValueStyle}>
-                                  <Clock size={14} />
-                                  {formatTime(chore.timeMinutes)}
-                                </div>
-                                <div style={choreValueStyle}>
-                                  <DollarSign size={14} />
-                                  {formatCurrency(chore.payRate)}
-                                </div>
-                                {chore.frequency && (
-                                  <div style={choreValueStyle}>
-                                    <Calendar size={14} />
-                                    {chore.frequency === 'daily' ? 'Daily' : 'Weekly'}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <button
-                          onClick={clearSelections}
-                          style={secondaryButtonStyle}
-                        >
-                          <RefreshCcw size={16} />
-                          Clear Selections
-                        </button>
-                      </div>
-                    ) : (
-                      <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
-                        No chores selected yet. Select chores from the list below or use one of our suggested plans.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div style={cardStyle}>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            Loading chores data...
+          </div>
+        ) : (
+          <>
+            {/* Input Section */}
+            <div style={twoColumnGridStyle}>
+              <div style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={headingStyle}>
-                    <ClipboardList style={smallIconStyle} />
-                    Available Chores
+                    <Target style={smallIconStyle} />
+                    Set Your Goal
                   </h3>
                   
-                  <div>
+                  <button
+                    onClick={() => {
+                      setTargetInput('');
+                      setTargetAmount('');
+                      setSelectedChores([]);
+                      setChoreResults([]);
+                    }}
+                    style={{
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      border: 'none',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <RefreshCcw size={16} />
+                    Reset Calculator
+                  </button>
+                </div>
+                
+                {targetAmount && (
+                  <div style={{
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #86efac',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <Target size={16} color="#16a34a" />
+                    <span style={{ color: '#16a34a', fontWeight: '500' }}>
+                      Your target goal: {formatCurrency(targetAmount)}
+                    </span>
+                  </div>
+                )}
+                
+                <div>
+                  <div style={inputContainerStyle}>
+                    <label style={labelStyle}>
+                      How much do you need to earn?
+                    </label>
                     <div style={{ position: 'relative' }}>
                       <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={searchInputStyle}
-                        placeholder="Search chores..."
+                        type="number"
+                        value={targetInput}
+                        onChange={(e) => setTargetInput(e.target.value)}
+                        style={inputStyle}
+                        placeholder="e.g., 50"
+                        min="1"
+                        step="1"
                       />
-                      <Edit style={inputIconStyle} />
+                      <DollarSign style={inputIconStyle} />
                     </div>
-                    
-                    <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                      {filteredChores
-                        .slice(0, showAll ? filteredChores.length : 5)
-                        .map((chore) => (
+                  </div>
+                  
+                  <button
+                    onClick={handleCalculate}
+                    style={buttonStyle}
+                  >
+                    <Calculator size={16} />
+                    Calculate Chore Plan
+                  </button>
+
+                  <div style={dividerStyle}></div>
+
+                  <h4 style={subheadingStyle}>Currently Selected Chores</h4>
+                  
+                  {selectedChores.length > 0 ? (
+                    <div>
+                      <div style={summaryStyle}>
+                        <div style={summaryItemStyle}>
+                          <div style={summaryLabelStyle}>Total Earnings</div>
+                          <div style={summaryValueStyle}>{formatCurrency(totalEarnings)}</div>
+                        </div>
+                        
+                        <div style={summaryItemStyle}>
+                          <div style={summaryLabelStyle}>Work Time</div>
+                          <div style={summaryValueStyle}>{formatTime(totalTime)}</div>
+                        </div>
+                        
+                        <div style={summaryItemStyle}>
+                          <div style={summaryLabelStyle}>Hourly Rate</div>
+                          <div style={summaryValueStyle}>
+                            {formatCurrency(calculateHourlyRate(totalEarnings, totalTime))}/hr
+                          </div>
+                        </div>
+                        
+                        <div style={summaryItemStyle}>
+                          <div style={summaryLabelStyle}>Time Period</div>
+                          <div style={summaryValueStyle}>
+                            {formatTimePeriod(totalDays % 7, Math.floor(totalDays / 7))}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem' }}>
+                        {selectedChores.map((chore) => (
                           <div 
-                            key={chore.id || chore._id} 
-                            style={choreItemStyle}
-                            onClick={() => toggleChoreSelection(chore)}
+                            key={chore.instanceId || chore.id || chore._id} 
+                            style={selectedChoreStyle}
+                            onClick={() => setSelectedChores(selectedChores.filter(c => 
+                              (c.instanceId || c.id || c._id) !== (chore.instanceId || chore.id || chore._id)
+                            ))}
                           >
                             <div style={choreTitleStyle}>
-                              <div style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid #d1d5db' }}></div>
+                              <CheckCircle size={16} color="#9333ea" />
                               <span>{chore.name}</span>
                             </div>
                             <div style={choreDetailStyle}>
@@ -946,10 +1006,130 @@ const ChorzCalculator = () => {
                                 <DollarSign size={14} />
                                 {formatCurrency(chore.payRate)}
                               </div>
-                              <div style={choreValueStyle}>
-                                <Calendar size={14} />
-                                {chore.frequency === 'daily' ? 'Daily' : 'Weekly'}
-                              </div>
+                              {chore.frequency && (
+                                <div style={choreValueStyle}>
+                                  <Calendar size={14} />
+                                  {chore.frequency === 'daily' ? 'Daily' : 'Weekly'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <button
+                        onClick={clearSelections}
+                        style={secondaryButtonStyle}
+                      >
+                        <RefreshCcw size={16} />
+                        Clear Selections
+                      </button>
+                    </div>
+                  ) : (
+                    <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
+                      No chores selected yet. Select chores from the list below or use one of our suggested plans.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <h3 style={headingStyle}>
+                  <ClipboardList style={smallIconStyle} />
+                  Available Chores
+                </h3>
+                
+                {/* Add Chore Button */}
+                <button
+                  onClick={toggleAddChoreForm}
+                  style={{
+                    ...buttonStyle,
+                    marginBottom: '1rem',
+                    backgroundColor: '#10b981', // Green color
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.875rem',
+                    width: 'auto'
+                  }}
+                >
+                  <PlusCircle size={16} />
+                  Add New Chore
+                </button>
+                
+                <div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={searchInputStyle}
+                      placeholder="Search chores..."
+                    />
+                    <Edit style={inputIconStyle} />
+                  </div>
+                  
+                  {/* Updated: Table-style layout for Available Chores */}
+                  <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                    {/* Table header */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 80px 70px 80px',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0',
+                      borderBottom: '2px solid #e5e7eb',
+                      fontWeight: '500',
+                      fontSize: '0.75rem',
+                      color: '#6b7280'
+                    }}>
+                      <div>CHORE NAME</div>
+                      <div style={{ textAlign: 'center' }}>TIME</div>
+                      <div style={{ textAlign: 'center' }}>PAY</div>
+                      <div style={{ textAlign: 'center' }}>FREQUENCY</div>
+                    </div>
+                    
+                    {filteredChores
+                        .slice(0, showAll ? filteredChores.length : 5)
+                        .map((chore) => (
+                          <div 
+                            key={chore.id || chore._id} 
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 80px 70px 80px',
+                              gap: '0.5rem',
+                              padding: '0.75rem 0',
+                              borderBottom: '1px solid #e5e7eb',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              alignItems: 'center',
+                              transition: 'background-color 0.2s',
+                              ':hover': {
+                                backgroundColor: '#f3f0ff'
+                              }
+                            }}
+                            onClick={() => toggleChoreSelection(chore)}
+                          >
+                            <div style={choreTitleStyle}>
+                              <div style={{ 
+                                width: 16, 
+                                height: 16, 
+                                borderRadius: '50%', 
+                                border: '1px solid #d1d5db',
+                                marginRight: '0.5rem'
+                              }}></div>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {chore.name}
+                              </span>
+                            </div>
+                            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Clock size={12} style={{ marginRight: '4px', color: '#9333ea' }} />
+                              <span>{formatTime(chore.timeMinutes)}</span>
+                            </div>
+                            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <DollarSign size={12} style={{ marginRight: '4px', color: '#9333ea' }} />
+                              <span>{formatCurrency(chore.payRate)}</span>
+                            </div>
+                            <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Calendar size={12} style={{ marginRight: '4px', color: '#9333ea' }} />
+                              <span>{chore.frequency === 'daily' ? 'Daily' : 'Weekly'}</span>
                             </div>
                           </div>
                         ))}
@@ -999,32 +1179,67 @@ const ChorzCalculator = () => {
                             </div>
                             
                             <div style={summaryItemStyle}>
+                              <div style={summaryLabelStyle}>Hourly Rate</div>
+                              <div style={summaryValueStyle}>
+                                {formatCurrency(calculateHourlyRate(result.totalPay, result.totalTime))}/hr
+                              </div>
+                            </div>
+                            
+                            <div style={summaryItemStyle}>
                               <div style={summaryLabelStyle}>Time Period</div>
-                              <div style={summaryValueStyle} title={`${result.totalDays} days, ${result.totalWeeks} weeks`}>
+                              <div style={summaryValueStyle}>
                                 {formatTimePeriod(result.totalDays % 7, Math.floor(result.totalDays / 7))}
                               </div>
                             </div>
                           </div>
                           
                           <div style={{ maxHeight: '150px', overflowY: 'auto', marginBottom: '1rem' }}>
+                            {/* Use the same grid-based layout for plan chores */}
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 80px 70px 80px',
+                              gap: '0.5rem',
+                              padding: '0.5rem 0',
+                              borderBottom: '2px solid #e5e7eb',
+                              fontWeight: '500',
+                              fontSize: '0.75rem',
+                              color: '#6b7280'
+                            }}>
+                              <div>CHORE NAME</div>
+                              <div style={{ textAlign: 'center' }}>TIME</div>
+                              <div style={{ textAlign: 'center' }}>PAY</div>
+                              <div style={{ textAlign: 'center' }}>FREQUENCY</div>
+                            </div>
+                            
                             {result.chores.map((chore) => (
-                              <div key={`${chore.id || chore._id}-${chore.count}`} style={choreItemStyle}>
-                                <div style={choreTitleStyle}>
-                                  <span>{chore.name} {chore.count > 1 ? `(${chore.count}×)` : ''}</span>
+                              <div 
+                                key={`${chore.id || chore._id}-${chore.count}`} 
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '1fr 80px 70px 80px',
+                                  gap: '0.5rem',
+                                  padding: '0.5rem 0',
+                                  borderBottom: '1px solid #e5e7eb',
+                                  fontSize: '0.875rem',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {chore.name} {chore.count > 1 ? `(${chore.count}×)` : ''}
+                                  </span>
                                 </div>
-                                <div style={choreDetailStyle}>
-                                  <div style={choreValueStyle}>
-                                    <Clock size={14} />
-                                    {formatTime(chore.timeMinutes * chore.count)}
-                                  </div>
-                                  <div style={choreValueStyle}>
-                                    <DollarSign size={14} />
-                                    {formatCurrency(chore.payRate * chore.count)}
-                                  </div>
-                                  <div style={choreValueStyle}>
-                                    <Calendar size={14} />
-                                    {chore.frequency === 'daily' ? 'Daily' : 'Weekly'}
-                                  </div>
+                                <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Clock size={12} style={{ marginRight: '4px', color: '#9333ea' }} />
+                                  <span>{formatTime(chore.timeMinutes * chore.count)}</span>
+                                </div>
+                                <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <DollarSign size={12} style={{ marginRight: '4px', color: '#9333ea' }} />
+                                  <span>{formatCurrency(chore.payRate * chore.count)}</span>
+                                </div>
+                                <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Calendar size={12} style={{ marginRight: '4px', color: '#9333ea' }} />
+                                  <span>{chore.frequency === 'daily' ? 'Daily' : 'Weekly'}</span>
                                 </div>
                               </div>
                             ))}
@@ -1044,6 +1259,205 @@ const ChorzCalculator = () => {
                 </div>
               )}
             </>
+          )}
+
+          {/* Add Chore Modal */}
+          {showAddChoreForm && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 100
+            }}>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '0.75rem',
+                padding: '1.5rem',
+                width: '90%',
+                maxWidth: '500px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1rem'
+                }}>
+                  <h3 style={headingStyle}>Add New Chore</h3>
+                  <button 
+                    onClick={toggleAddChoreForm}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#6b7280'
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                {addChoreError && (
+                  <div style={{
+                    backgroundColor: '#fee2e2',
+                    color: '#b91c1c',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    marginBottom: '1rem',
+                    fontSize: '0.875rem'
+                  }}>
+                    {addChoreError}
+                  </div>
+                )}
+                
+                {addChoreSuccess && (
+                  <div style={{
+                    backgroundColor: '#d1fae5',
+                    color: '#065f46',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    marginBottom: '1rem',
+                    fontSize: '0.875rem'
+                  }}>
+                    {addChoreSuccess}
+                  </div>
+                )}
+                
+                <form onSubmit={handleAddChore}>
+                  {/* Chore Name */}
+                  <div style={inputContainerStyle}>
+                    <label style={labelStyle}>Chore Name:</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={newChore.name}
+                      onChange={handleChoreInputChange}
+                      style={{
+                        ...inputStyle,
+                        paddingLeft: '0.75rem'
+                      }}
+                      placeholder="Enter chore name"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Time in Minutes */}
+                  <div style={inputContainerStyle}>
+                    <label style={labelStyle}>Time (in 5-minute increments):</label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}>
+                      <input
+                        type="range"
+                        name="timeMinutes"
+                        min="5"
+                        max="120"
+                        step="5"
+                        value={newChore.timeMinutes}
+                        onChange={handleChoreInputChange}
+                        style={{
+                          flex: 1,
+                          marginRight: '1rem'
+                        }}
+                      />
+                      <div style={{
+                        minWidth: '60px',
+                        textAlign: 'right',
+                        fontSize: '0.875rem',
+                        fontWeight: '500',
+                        color: '#4b5563'
+                      }}>
+                        {formatTime(newChore.timeMinutes)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Pay Rate */}
+                  <div style={inputContainerStyle}>
+                    <label style={labelStyle}>Pay Rate (up to $100):</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="number"
+                        name="payRate"
+                        min="0"
+                        max="100"
+                        step="0.50"
+                        value={newChore.payRate}
+                        onChange={handleChoreInputChange}
+                        style={{
+                          ...inputStyle,
+                          paddingLeft: '2.5rem'
+                        }}
+                      />
+                      <DollarSign style={inputIconStyle} />
+                    </div>
+                  </div>
+                  
+                  {/* Frequency */}
+                  <div style={inputContainerStyle}>
+                    <label style={labelStyle}>Frequency:</label>
+                    <div style={{
+                      display: 'flex',
+                      gap: '1rem',
+                      marginTop: '0.5rem'
+                    }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: 'pointer'
+                      }}>
+                        <input
+                          type="radio"
+                          name="frequency"
+                          value="daily"
+                          checked={newChore.frequency === 'daily'}
+                          onChange={handleChoreInputChange}
+                        />
+                        <span>Daily</span>
+                      </label>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        cursor: 'pointer'
+                      }}>
+                        <input
+                          type="radio"
+                          name="frequency"
+                          value="weekly"
+                          checked={newChore.frequency === 'weekly'}
+                          onChange={handleChoreInputChange}
+                        />
+                        <span>Weekly</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    style={{
+                      ...buttonStyle,
+                      marginTop: '1rem',
+                      backgroundColor: '#10b981'
+                    }}
+                  >
+                    <Save size={16} />
+                    Save Chore
+                  </button>
+                </form>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
