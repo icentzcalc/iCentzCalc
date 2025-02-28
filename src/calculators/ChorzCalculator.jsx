@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 // API URL 
-const API_URL = 'http://localhost:5001/api'; 
+const API_URL = '/api'; 
 
 // Styled components using inline styles
 const Card = ({ style, children }) => (
