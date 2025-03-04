@@ -161,12 +161,12 @@ const LotteryCal = () => {
     const text = encodeURIComponent(
       `I could save ${formatCurrency(calculations.fiveYear)} on lottery tickets and gaming over 5 years—that could grow to ${formatCurrency(calculations.investments[20])} in 20 years if invested!`
     );
-    const url = encodeURIComponent('https://your-lottery-calculator.com');
+    const url = encodeURIComponent('https://walletwize.onrender.com/');
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
   };
 
   const shareOnFacebook = () => {
-    const url = encodeURIComponent('https://your-lottery-calculator.com');
+    const url = encodeURIComponent('https://walletwize.onrender.com/');
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
