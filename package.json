@@ -17,10 +17,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-scripts": "^3.0.1",
+    "serve": "^14.2.4",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "serve -s build -1 $PORT",
+    "start": "node node_modules/.bin/serve -s build -1 $PORT",
     "server": "node server.js",
     "dev": "concurrently \"npm run server\" \"npm start\"",
     "build": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts build",
