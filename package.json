@@ -50,5 +50,8 @@
     "postcss": "^8.4.21",
     "tailwindcss": "^3.3.0"
   },
+  "engines": {
+    "node": "18.x"
+  },
   "proxy": "http://localhost:5001"
 }
