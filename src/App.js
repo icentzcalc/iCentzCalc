@@ -4,6 +4,7 @@ import SimpleNavbar from './components/SimpleNavbar';
 import LotteryCal from './calculators/LotteryCal';
 import ChorzCalculator from './calculators/ChorzCalculator.jsx'; // Import the new Chorz calculator
 import Home from './components/Home';
+import BocceCalculator from './calculators/BocceCalculator.jsx'; // Import the Bocce calculator
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -37,6 +38,8 @@ function App() {
         return <LotteryCal />;
       case 'chorz': // Add this case for the Chorz calculator
         return <ChorzCalculator />;
+      case 'bocce': // Add this case for the Bocce calculator
+        return <BocceCalculator />;  
       case 'home':
         return <Home onNavigate={handleNavigate} />;
       default:

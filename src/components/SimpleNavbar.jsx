@@ -7,7 +7,8 @@ import {
   Calculator, 
   BookOpen, 
   Rocket,
-  ClipboardList
+  ClipboardList,
+  Shuffle
 } from 'lucide-react';
 
 const SimpleNavbar = ({ onNavigate, currentPage = 'home' }) => {
@@ -156,9 +157,10 @@ const SimpleNavbar = ({ onNavigate, currentPage = 'home' }) => {
       icon: <Calculator style={iconStyle} />,
       dropdown: [
         { name: 'Lottery/Gaming', path: 'lottery', icon: <PiggyBank style={iconStyle} /> },
-        { name: 'Chorz', path: 'chorz', icon: <ClipboardList style={iconStyle} /> } // Added new Chorz option
+        { name: 'Chorz', path: 'chorz', icon: <ClipboardList style={iconStyle} /> },
+        { name: 'Bocce Probability', path: 'bocce', icon: <Shuffle style={iconStyle} /> } // Use Shuffle icon
       ],
-      active: currentPage === 'lottery' || currentPage === 'chorz'
+      active: currentPage === 'lottery' || currentPage === 'chorz' || currentPage === 'bocce'
     },
     {
       name: 'Smartz',
